@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Threads × 蝦皮 搜尋工具</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --bg3: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #ff6b35;
+    --accent2: #a855f7;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --yellow: #fbbf24;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #4a5568;
+    --radius: 12px;
+    --font: 'Noto Sans TC', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a0a1f 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+  .header-title {
+    font-size: 18px;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+  }
+  .header-sub {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+    font-family: var(--mono);
+  }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex: 1;
+    min-width: 80px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── Pages ── */
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  /* ── Form ── */
+  input, select, textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+  textarea { resize: vertical; min-height: 80px; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .form-row > * { flex: 1; }
+  .form-group { margin-bottom: 12px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-purple  { background: var(--accent2); color: white; }
+  .btn-green   { background: var(--green); color: white; }
+  .btn-red     { background: var(--red); color: white; }
+  .btn-blue    { background: var(--blue); color: white; }
+  .btn-ghost   { background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+  .btn-full    { width: 100%; }
+  .btn-sm      { padding: 6px 10px; font-size: 12px; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+  .tag-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .tag-red   { background: rgba(239,68,68,0.15);  color: var(--red); }
+  .tag-yellow{ background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .tag-gray  { background: rgba(100,116,139,0.15);color: var(--text3); }
+
+  /* ── Post card ── */
+  .post-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+    cursor: pointer;
+  }
+  .post-item.selected {
+    border-color: var(--accent);
+    background: rgba(255,107,53,0.06);
+  }
+  .post-item.replied {
+    border-color: var(--red);
+    background: rgba(239,68,68,0.04);
+    opacity: 0.7;
+  }
+  .post-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .post-username { font-size: 13px; font-weight: 700; color: var(--accent2); }
+  .post-time     { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .post-text     { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .post-actions  { display: flex; gap: 6px; margin-top: 8px; }
+
+  .checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    background: var(--bg2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .checkbox.checked::after {
+    content: '✓';
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* ── Link item ── */
+  .link-item {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .link-name  { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .link-url   { font-size: 11px; color: var(--blue); font-family: var(--mono);
+                word-break: break-all; margin-bottom: 8px; }
+  .link-check { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; accent-color: var(--accent); }
+
+  /* ── Status bar ── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 12px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot-green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot-red    { background: var(--red); }
+  .dot-gray   { background: var(--text3); }
+  .dot-pulse  { background: var(--yellow); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── Loading ── */
+  .loading {
+    text-align: center;
+    padding: 30px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Bottom nav ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 100;
+  }
+  .nav-item {
+    flex: 1;
+    padding: 10px 4px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-item .nav-icon { font-size: 20px; }
+  .nav-item .nav-label {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 2px;
+    display: block;
+  }
+  .nav-item.active .nav-label { color: var(--accent); }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 13px; line-height: 1.6; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: flex-end;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border-radius: 20px 20px 0 0;
+    padding: 20px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+  }
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+
+  /* ── Compose area ── */
+  .compose-preview {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 13px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--text2);
+    min-height: 100px;
+    margin-bottom: 10px;
+  }
+
+  /* ── History badge ── */
+  .replied-badge {
+    font-size: 10px;
+    background: rgba(239,68,68,0.15);
+    color: var(--red);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  /* ── Search history ── */
+  .kw-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .kw-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .kw-chip:active { border-color: var(--accent); color: var(--accent); }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 0;
+  }
+
+  .count-badge {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">⚡ Threads × 蝦皮</div>
+  <div class="header-sub">搜尋工具 v1.0 · 手機版</div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('search')">
+    <div class="nav-icon">🔍</div>
+    <span class="nav-label">搜尋</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('results')">
+    <div class="nav-icon">📋</div>
+    <span class="nav-label">結果 <span id="result-count-nav"></span></span>
+  </div>
+  <div class="nav-item" onclick="switchTab('compose')">
+    <div class="nav-icon">✍️</div>
+    <span class="nav-label">文案</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('links')">
+    <div class="nav-icon">🛒</div>
+    <span class="nav-label">連結</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('settings')">
+    <div class="nav-icon">⚙️</div>
+    <span class="nav-label">設定</span>
+  </div>
+</div>
+
+<!-- ── PAGE: 搜尋 ── -->
+<div class="page active" id="page-search">
+  <div class="card">
+    <div class="card-title">🔍 搜尋設定</div>
+    <div class="form-group">
+      <label>關鍵字</label>
+      <input type="text" id="keyword-input" placeholder="例如：防蚊液、頸枕" oninput="updateKwHistory()">
+      <div class="kw-chips" id="kw-chips"></div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>最多篇數</label>
+        <input type="number" id="max-posts" value="30" min="5" max="100">
+      </div>
+      <div>
+        <label>時間篩選</label>
+        <select id="time-filter">
+          <option value="0">不限時間</option>
+          <option value="1">今天</option>
+          <option value="3">3 天內</option>
+          <option value="7">7 天內</option>
+          <option value="14">14 天內</option>
+          <option value="30">30 天內</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary btn-full" id="search-btn" onclick="startSearch()">
+        🔍 開始搜尋
+      </button>
+      <button class="btn btn-red btn-full" id="stop-btn" onclick="stopSearch()" style="display:none">
+        ⏹ 停止
+      </button>
+    </div>
+  </div>
+
+  <div id="search-status"></div>
+</div>
+
+<!-- ── PAGE: 搜尋結果 ── -->
+<div class="page" id="page-results">
+  <div class="card" style="padding:12px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="selectAll()">全選</button>
+      <button class="btn btn-ghost btn-sm" onclick="deselectAll()">全不選</button>
+      <button class="btn btn-ghost btn-sm" onclick="selectUnreplied()">只選未回覆</button>
+      <span id="selected-count" style="font-size:12px;color:var(--yellow);margin-left:auto;font-weight:700">已勾選：0 篇</span>
+    </div>
+  </div>
+
+  <div id="posts-container">
+    <div class="empty">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-text">請先在「搜尋」頁面輸入關鍵字</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: 文案 ── -->
+<div class="page" id="page-compose">
+  <div class="card">
+    <div class="card-title">📝 文案管理</div>
+    <div class="form-row" style="margin-bottom:8px">
+      <select id="template-select" onchange="loadTemplate()">
+        <option value="">-- 選擇文案 --</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="deleteTemplate()">🗑</button>
+    </div>
+    <div class="form-group">
+      <input type="text" id="template-name" placeholder="文案名稱">
+    </div>
+    <div class="form-group">
+      <label>文案內容（可用 {link} {link2} {link3} 代入連結）</label>
+      <textarea id="template-content" rows="6" placeholder="輸入回覆文案..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green" onclick="saveTemplate()">💾 儲存文案</button>
+      <button class="btn btn-blue" onclick="insertLinks()">🛒 插入勾選連結</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👁 預覽（含連結替換）</div>
+    <div class="compose-preview" id="preview-area">（預覽區）</div>
+    <button class="btn btn-primary btn-full" onclick="copyCompose()">📋 複製文案</button>
+  </div>
+</div>
+
+<!-- ── PAGE: 蝦皮連結 ── -->
+<div class="page" id="page-links">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="font-size:14px;font-weight:700">🛒 蝦皮分潤連結</div>
+    <button class="btn btn-primary btn-sm" onclick="showAddLink()">＋ 新增</button>
+  </div>
+
+  <div class="form-group">
+    <input type="text" id="link-search" placeholder="搜尋產品名稱..." oninput="renderLinks()">
+  </div>
+
+  <div id="links-container">
+    <div class="empty">
+      <div class="empty-icon">🛒</div>
+      <div class="empty-text">還沒有連結<br>點「＋ 新增」加入蝦皮分潤連結</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── PAGE: 設定 ── -->
+<div class="page" id="page-settings">
+  <div class="card">
+    <div class="card-title">📊 使用統計</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:900;color:var(--green)" id="stat-total">0</div>
+        <div style="font-size:11px;color:var(--text3)">累計已回覆</div>
+      </div>
+      <div style="flex:1;background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:900;color:var(--blue)" id="stat-links">0</div>
+        <div style="font-size:11px;color:var(--text3)">已儲存連結</div>
+      </div>
+      <div style="flex:1;background:var(--bg3);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:900;color:var(--yellow)" id="stat-templates">0</div>
+        <div style="font-size:11px;color:var(--text3)">已儲存文案</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🗑 資料管理</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost btn-sm" onclick="clearHistory()">清除回覆紀錄</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportData()">匯出資料</button>
+      <button class="btn btn-ghost btn-sm" onclick="importData()">匯入資料</button>
+    </div>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+  </div>
+
+  <div class="card">
+    <div class="card-title">ℹ️ 關於</div>
+    <div style="font-size:12px;color:var(--text3);line-height:1.8">
+      <div>版本：v1.0 手機網頁版</div>
+      <div>功能：搜尋 Threads 貼文、管理蝦皮分潤連結、組合回覆文案</div>
+      <div style="margin-top:8px;color:var(--text2)">⚠️ 注意：回覆功能需在電腦版使用</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: 新增/編輯連結 ── -->
+<div class="modal-overlay" id="link-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="link-modal-title">新增蝦皮連結</div>
+    <div class="form-group">
+      <label>產品名稱</label>
+      <input type="text" id="link-name-input" placeholder="例如：澳洲蝴蝶衣">
+    </div>
+    <div class="form-group">
+      <label>分潤連結</label>
+      <input type="url" id="link-url-input" placeholder="https://s.shopee.tw/xxx">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-green btn-full" onclick="saveLink()">✅ 儲存</button>
+      <button class="btn btn-ghost" onclick="closeModal('link-modal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════
+// 資料儲存（localStorage）
+// ══════════════════════════════
+const DB = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
+  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+};
+
+let state = {
+  posts: [],
+  selectedIds: new Set(),
+  repliedIds: new Set(DB.get('repliedIds') || []),
+  links: DB.get('shopeeLinks') || {},
+  templates: DB.get('templates') || {},
+  kwHistory: DB.get('kwHistory') || [],
+  linkChecks: DB.get('linkChecks') || {},  // {name: true/false/null}
+  searching: false,
+  stopRequested: false,
+};
+
+// ══════════════════════════════
+// Tab 切換
+// ══════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  document.querySelectorAll('.nav-item')[['search','results','compose','links','settings'].indexOf(tab)]
+    .classList.add('active');
+  if (tab === 'links') renderLinks();
+  if (tab === 'compose') updatePreview();
+  if (tab === 'settings') updateStats();
+}
+
+// ══════════════════════════════
+// 搜尋
+// ══════════════════════════════
+async function startSearch() {
+  const keyword = document.getElementById('keyword-input').value.trim();
+  if (!keyword) { showToast('請輸入關鍵字！'); return; }
+
+  const maxPosts = parseInt(document.getElementById('max-posts').value) || 30;
+  const filterDays = parseInt(document.getElementById('time-filter').value) || 0;
+
+  // 儲存關鍵字歷史
+  if (!state.kwHistory.includes(keyword)) {
+    state.kwHistory.unshift(keyword);
+    state.kwHistory = state.kwHistory.slice(0, 15);
+    DB.set('kwHistory', state.kwHistory);
+    renderKwChips();
+  }
+
+  state.posts = [];
+  state.selectedIds = new Set();
+  state.searching = true;
+  state.stopRequested = false;
+
+  document.getElementById('search-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = 'block';
+  document.getElementById('search-status').innerHTML = `
+    <div class="loading">
+      <div class="spinner"></div>
+      <div>搜尋中：${keyword}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">透過 Threads 搜尋頁面抓取...</div>
+    </div>`;
+
+  try {
+    // 使用 Threads 搜尋 API（透過 CORS Proxy）
+    const encoded = encodeURIComponent(keyword);
+    // 直接 fetch Threads 搜尋頁面
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(
+      `https://www.threads.com/search?q=${encoded}&serp_type=default`
+    )}`;
+
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(15000) });
+    const data = await res.json();
+    const html = data.contents || '';
+
+    // 解析 HTML 找貼文
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // 找所有 /@xxx/post/ 連結
+    const links = Array.from(doc.querySelectorAll('a[href*="/post/"]'));
+    const seen = new Set();
+    let found = 0;
+
+    for (const link of links) {
+      if (state.stopRequested || found >= maxPosts) break;
+      const href = link.getAttribute('href') || '';
+      if (!href.includes('/@') || !href.includes('/post/')) continue;
+
+      const username = href.split('/@')[1]?.split('/')[0] || '';
+      const postCode = href.split('/post/')[1]?.split('/')[0] || '';
+      if (!postCode || seen.has(postCode)) continue;
+      seen.add(postCode);
+
+      // 往上找文字
+      let parent = link.parentElement;
+      let postText = '';
+      for (let i = 0; i < 10; i++) {
+        if (!parent) break;
+        const text = parent.innerText || parent.textContent || '';
+        if (text.length > 50) { postText = text; break; }
+        parent = parent.parentElement;
+      }
+
+      // 清理文字
+      let clean = postText
+        .replace(/讚\s*\d*/g, '')
+        .replace(/留言\s*\d*/g, '')
+        .replace(/轉發\s*\d*/g, '')
+        .replace(/分享\s*\d*/g, '')
+        .replace(/更多/g, '')
+        .replace(/翻譯/g, '')
+        .replace(username, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 400);
+
+      if (!clean || clean.length < 5) continue;
+
+      // 解析時間
+      let postTime = new Date().toISOString().slice(0,10);
+      let postTimeDisplay = '今天';
+      const minMatch = postText.match(/(\d+)\s*分鐘/);
+      const hrMatch  = postText.match(/(\d+)\s*小時/);
+      const dayMatch = postText.match(/(\d+)\s*天/);
+      const dateMatch = postText.match(/(\d{4}-\d{1,2}-\d{1,2})/);
+      const mdyMatch  = postText.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+
+      if (minMatch) {
+        postTimeDisplay = `${minMatch[1]} 分鐘前`;
+        postTime = new Date().toISOString().slice(0,10);
+      } else if (hrMatch) {
+        postTimeDisplay = `${hrMatch[1]} 小時前`;
+        postTime = new Date().toISOString().slice(0,10);
+      } else if (dayMatch) {
+        const d = new Date(); d.setDate(d.getDate() - parseInt(dayMatch[1]));
+        postTime = d.toISOString().slice(0,10);
+        postTimeDisplay = `${dayMatch[1]} 天前`;
+      } else if (dateMatch) {
+        postTime = dateMatch[1];
+        postTimeDisplay = dateMatch[1];
+      } else if (mdyMatch) {
+        const yr = parseInt(mdyMatch[3]) < 100 ? 2000 + parseInt(mdyMatch[3]) : parseInt(mdyMatch[3]);
+        postTime = `${yr}-${String(mdyMatch[1]).padStart(2,'0')}-${String(mdyMatch[2]).padStart(2,'0')}`;
+        postTimeDisplay = postTime;
+      }
+
+      // 時間篩選
+      if (filterDays > 0) {
+        const postDate = new Date(postTime);
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (filterDays === 1) {
+          if (postDate < today) continue;
+        } else {
+          const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - filterDays);
+          cutoff.setHours(0,0,0,0);
+          if (postDate < cutoff) continue;
+        }
+      }
+
+      state.posts.push({
+        id: postCode, text: clean, username, postTime, postTimeDisplay,
+        url: `https://www.threads.com${href}`
+      });
+      found++;
+    }
+
+    showSearchResults(found, state.posts.length, filterDays > 0 ? links.length : null);
+
+  } catch (err) {
+    console.error(err);
+    // CORS 失敗時提示用戶
+    document.getElementById('search-status').innerHTML = `
+      <div class="card" style="border-color:var(--red)">
+        <div style="color:var(--red);font-weight:700;margin-bottom:8px">⚠️ 搜尋受限</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          手機瀏覽器無法直接搜尋 Threads（跨網域限制）。<br><br>
+          建議做法：<br>
+          1. 點下方按鈕直接開啟 Threads 搜尋<br>
+          2. 複製想回覆的貼文連結<br>
+          3. 回到「文案」頁面組合回覆內容
+        </div>
+        <div class="btn-row" style="margin-top:12px">
+          <button class="btn btn-primary" onclick="openThreadsSearch()">🔍 開啟 Threads 搜尋</button>
+        </div>
+      </div>`;
+  }
+
+  state.searching = false;
+  document.getElementById('search-btn').style.display = 'block';
+  document.getElementById('stop-btn').style.display = 'none';
+}
+
+function openThreadsSearch() {
+  const keyword = document.getElementById('keyword-input').value.trim() || '';
+  const encoded = encodeURIComponent(keyword);
+  window.open(`https://www.threads.com/search?q=${encoded}`, '_blank');
+}
+
+function stopSearch() {
+  state.stopRequested = true;
+  document.getElementById('search-btn').style.display = 'block';
+  document.getElementById('stop-btn').style.display = 'none';
+  showToast('搜尋已停止');
+}
+
+function showSearchResults(found, total, rawCount) {
+  let msg = `找到 ${total} 篇`;
+  if (rawCount && rawCount > total) msg += `（共抓 ${rawCount} 篇，時間篩選後剩 ${total} 篇）`;
+
+  document.getElementById('search-status').innerHTML = total > 0 ? `
+    <div class="status-bar">
+      <div class="dot dot-green"></div>
+      <span style="font-size:12px;font-weight:700;color:var(--green)">${msg}</span>
+      <button class="btn btn-ghost btn-sm" onclick="switchTab('results')" style="margin-left:auto">
+        查看結果 →
+      </button>
+    </div>` : `
+    <div class="status-bar">
+      <div class="dot dot-gray"></div>
+      <span style="font-size:12px;color:var(--text3)">沒有找到結果，試試其他關鍵字</span>
+    </div>`;
+
+  renderPosts();
+  document.getElementById('result-count-nav').textContent =
+    total > 0 ? `(${total})` : '';
+}
+
+// ══════════════════════════════
+// 貼文清單
+// ══════════════════════════════
+function renderPosts() {
+  const container = document.getElementById('posts-container');
+  if (!state.posts.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>
+      <div class="empty-text">沒有找到貼文</div></div>`;
+    return;
+  }
+
+  container.innerHTML = state.posts.map((post, i) => {
+    const isSelected = state.selectedIds.has(post.id);
+    const isReplied  = state.repliedIds.has(post.id);
+    return `
+    <div class="post-item ${isSelected ? 'selected' : ''} ${isReplied ? 'replied' : ''}"
+         onclick="togglePost('${post.id}', ${i})">
+      <div class="post-meta">
+        <div class="checkbox ${isSelected ? 'checked' : ''}"></div>
+        <span class="post-username">@${post.username}</span>
+        <span class="post-time">📅 ${post.postTimeDisplay}</span>
+        ${isReplied ? '<span class="replied-badge">⚠️ 已回覆</span>' : ''}
+      </div>
+      <div class="post-text">${post.text.slice(0,160)}${post.text.length > 160 ? '…' : ''}</div>
+      <div class="post-actions">
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openPost('${post.url}')">
+          🔗 開啟貼文
+        </button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();copyPostUrl('${post.url}')">
+          📋 複製連結
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateSelectedCount();
+}
+
+function togglePost(id, idx) {
+  if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+  else state.selectedIds.add(id);
+  renderPosts();
+}
+function selectAll()       { state.posts.forEach(p => state.selectedIds.add(p.id)); renderPosts(); }
+function deselectAll()     { state.selectedIds.clear(); renderPosts(); }
+function selectUnreplied() {
+  state.selectedIds.clear();
+  state.posts.forEach(p => { if (!state.repliedIds.has(p.id)) state.selectedIds.add(p.id); });
+  renderPosts();
+}
+function updateSelectedCount() {
+  const n = state.selectedIds.size;
+  document.getElementById('selected-count').textContent = `已勾選：${n} 篇`;
+}
+function openPost(url)     { window.open(url, '_blank'); }
+function copyPostUrl(url)  { navigator.clipboard.writeText(url); showToast('已複製貼文連結！'); }
+
+// ══════════════════════════════
+// 蝦皮連結
+// ══════════════════════════════
+function renderLinks() {
+  const container = document.getElementById('links-container');
+  const search = (document.getElementById('link-search')?.value || '').toLowerCase();
+  const entries = Object.entries(state.links)
+    .filter(([n, v]) => !search || n.toLowerCase().includes(search) || v.url.includes(search));
+
+  if (!entries.length) {
+    container.innerHTML = `<div class="empty"><div class="empty-icon">🛒</div>
+      <div class="empty-text">${search ? '沒有符合的連結' : '還沒有連結<br>點「＋ 新增」加入'}</div></div>`;
+    return;
+  }
+
+  container.innerHTML = entries.map(([name, info], idx) => {
+    const valid = info.valid;
+    const statusDot = valid === true ? '🟢' : valid === false ? '🔴' : '⚪';
+    const varName = idx === 0 ? '{link}' : `{link${idx+1}}`;
+    return `
+    <div class="link-item">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <input type="checkbox" class="link-check" id="lc-${name.replace(/\s/g,'_')}"
+               onchange="updateLinkCheck()">
+        <span style="font-size:11px;font-family:var(--mono);color:var(--yellow)">${varName}</span>
+        <span>${statusDot}</span>
+        <div class="link-name" style="flex:1;word-break:break-all">${name}</div>
+      </div>
+      <div class="link-url" onclick="window.open('${info.url}','_blank')">${info.url}</div>
+      ${valid === false ? '<div class="tag tag-red" style="margin-bottom:8px">⚠️ 連結可能已失效</div>' : ''}
+      <div class="btn-row">
+        <button class="btn btn-ghost btn-sm" onclick="checkLink('${name}')">🔍 檢測</button>
+        <button class="btn btn-ghost btn-sm" onclick="editLink('${name}')">✏️ 編輯</button>
+        <button class="btn btn-red btn-sm" onclick="deleteLink('${name}')">🗑</button>
+        <button class="btn btn-blue btn-sm" onclick="copyLink('${name}')">📋 複製</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateStats();
+}
+
+function copyLink(name) {
+  const url = state.links[name]?.url || '';
+  navigator.clipboard.writeText(url);
+  showToast(`已複製：${name}`);
+}
+
+function showAddLink(editName = null) {
+  document.getElementById('link-modal-title').textContent = editName ? '編輯連結' : '新增蝦皮連結';
+  document.getElementById('link-name-input').value = editName || '';
+  document.getElementById('link-url-input').value = editName ? (state.links[editName]?.url || '') : '';
+  document.getElementById('link-modal').dataset.editName = editName || '';
+  document.getElementById('link-modal').classList.add('show');
+}
+
+function saveLink() {
+  const name = document.getElementById('link-name-input').value.trim();
+  const url  = document.getElementById('link-url-input').value.trim();
+  if (!name || !url) { showToast('請填入名稱和連結！'); return; }
+  const editName = document.getElementById('link-modal').dataset.editName;
+  if (editName && editName !== name) delete state.links[editName];
+  state.links[name] = { url, valid: null };
+  DB.set('shopeeLinks', state.links);
+  closeModal('link-modal');
+  renderLinks();
+  showToast(`已儲存：${name}`);
+}
+
+function editLink(name)   { showAddLink(name); }
+function deleteLink(name) {
+  if (confirm(`刪除「${name}」？`)) {
+    delete state.links[name];
+    DB.set('shopeeLinks', state.links);
+    renderLinks();
+  }
+}
+
+async function checkLink(name) {
+  showToast(`檢測中：${name}...`);
+  try {
+    const url = state.links[name]?.url || '';
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxyUrl, { method: 'HEAD', signal: AbortSignal.timeout(8000) });
+    state.links[name].valid = res.ok;
+    DB.set('shopeeLinks', state.links);
+    showToast(res.ok ? `✅ ${name} 連結有效` : `❌ ${name} 連結失效！`);
+    renderLinks();
+  } catch {
+    state.links[name].valid = false;
+    DB.set('shopeeLinks', state.links);
+    showToast(`❌ ${name} 無法連接`);
+    renderLinks();
+  }
+}
+
+function updateLinkCheck() {} // placeholder
+
+// ══════════════════════════════
+// 文案
+// ══════════════════════════════
+function saveTemplate() {
+  const name = document.getElementById('template-name').value.trim();
+  const text = document.getElementById('template-content').value.trim();
+  if (!name) { showToast('請填入文案名稱！'); return; }
+  state.templates[name] = text;
+  DB.set('templates', state.templates);
+  refreshTemplateSelect();
+  showToast(`已儲存文案：${name}`);
+  updatePreview();
+}
+
+function loadTemplate() {
+  const name = document.getElementById('template-select').value;
+  if (name && state.templates[name] !== undefined) {
+    document.getElementById('template-content').value = state.templates[name];
+    document.getElementById('template-name').value = name;
+    updatePreview();
+  }
+}
+
+function deleteTemplate() {
+  const name = document.getElementById('template-select').value;
+  if (!name) return;
+  if (confirm(`刪除文案「${name}」？`)) {
+    delete state.templates[name];
+    DB.set('templates', state.templates);
+    refreshTemplateSelect();
+    document.getElementById('template-content').value = '';
+    showToast('已刪除');
+  }
+}
+
+function refreshTemplateSelect() {
+  const sel = document.getElementById('template-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- 選擇文案 --</option>' +
+    Object.keys(state.templates).map(n => `<option value="${n}">${n}</option>`).join('');
+  if (state.templates[cur]) sel.value = cur;
+}
+
+function buildReplyText(template) {
+  let text = template;
+  const names = Object.keys(state.links);
+  names.forEach((name, idx) => {
+    const url = state.links[name]?.url || '';
+    const varName = idx === 0 ? '{link}' : `{link${idx+1}}`;
+    text = text.replaceAll(varName, url);
+  });
+  // Also replace {link} with first link
+  if (names.length > 0) {
+    text = text.replaceAll('{link}', state.links[names[0]]?.url || '');
+  }
+  return text;
+}
+
+function updatePreview() {
+  const template = document.getElementById('template-content')?.value || '';
+  const preview = buildReplyText(template);
+  const el = document.getElementById('preview-area');
+  if (el) el.textContent = preview || '（預覽區）';
+}
+
+function insertLinks() {
+  // 取得在連結頁面勾選的連結
+  const checked = Object.keys(state.links).filter(name => {
+    const id = `lc-${name.replace(/\s/g,'_')}`;
+    return document.getElementById(id)?.checked;
+  });
+
+  if (!checked.length) {
+    // 如果沒勾選，插入所有連結
+    if (!Object.keys(state.links).length) { showToast('請先新增蝦皮連結！'); return; }
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const parts = Object.entries(state.links).map(([name, info], i) =>
+      `${letters[i]}.${name}\n${letters[i]}.${info.url}`
+    );
+    const text = parts.join('\n\n');
+    const ta = document.getElementById('template-content');
+    const pos = ta.selectionStart;
+    ta.value = ta.value.slice(0, pos) + text + ta.value.slice(pos);
+    showToast(`已插入 ${parts.length} 個連結`);
+  } else {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const parts = checked.map((name, i) =>
+      `${letters[i]}.${name}\n${letters[i]}.${state.links[name]?.url || ''}`
+    );
+    const text = parts.join('\n\n');
+    const ta = document.getElementById('template-content');
+    const pos = ta.selectionStart;
+    ta.value = ta.value.slice(0, pos) + text + ta.value.slice(pos);
+    showToast(`已插入 ${parts.length} 個連結`);
+  }
+  updatePreview();
+}
+
+function copyCompose() {
+  const template = document.getElementById('template-content').value;
+  const text = buildReplyText(template);
+  if (!text) { showToast('文案是空的！'); return; }
+  navigator.clipboard.writeText(text).then(() => showToast('✅ 已複製文案！'));
+}
+
+// ══════════════════════════════
+// 關鍵字歷史
+// ══════════════════════════════
+function renderKwChips() {
+  const container = document.getElementById('kw-chips');
+  container.innerHTML = state.kwHistory.slice(0, 8).map(kw =>
+    `<div class="kw-chip" onclick="setKeyword('${kw}')">${kw}</div>`
+  ).join('');
+}
+
+function setKeyword(kw) {
+  document.getElementById('keyword-input').value = kw;
+}
+
+function updateKwHistory() {}
+
+// ══════════════════════════════
+// 統計
+// ══════════════════════════════
+function updateStats() {
+  document.getElementById('stat-total').textContent     = state.repliedIds.size;
+  document.getElementById('stat-links').textContent     = Object.keys(state.links).length;
+  document.getElementById('stat-templates').textContent = Object.keys(state.templates).length;
+}
+
+function clearHistory() {
+  if (confirm('確定清除所有回覆紀錄？')) {
+    state.repliedIds = new Set();
+    DB.set('repliedIds', []);
+    updateStats();
+    showToast('已清除回覆紀錄');
+  }
+}
+
+// ══════════════════════════════
+// 匯出/匯入
+// ══════════════════════════════
+function exportData() {
+  const data = {
+    links: state.links,
+    templates: state.templates,
+    repliedIds: [...state.repliedIds],
+    kwHistory: state.kwHistory,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `threads-bot-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('已匯出備份！');
+}
+
+function importData() {
+  document.getElementById('import-file').click();
+}
+
+function handleImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.links)     { state.links = data.links; DB.set('shopeeLinks', data.links); }
+      if (data.templates) { state.templates = data.templates; DB.set('templates', data.templates); }
+      if (data.repliedIds){ state.repliedIds = new Set(data.repliedIds); DB.set('repliedIds', data.repliedIds); }
+      if (data.kwHistory) { state.kwHistory = data.kwHistory; DB.set('kwHistory', data.kwHistory); }
+      refreshTemplateSelect();
+      renderKwChips();
+      updateStats();
+      showToast('✅ 匯入成功！');
+    } catch { showToast('❌ 匯入失敗，格式錯誤'); }
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════
+// Modal
+// ══════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+});
+
+// ══════════════════════════════
+// Toast
+// ══════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════
+// 初始化
+// ══════════════════════════════
+document.getElementById('template-content').addEventListener('input', updatePreview);
+
+refreshTemplateSelect();
+renderKwChips();
+updateStats();
+</script>
+</body>
+</html>
