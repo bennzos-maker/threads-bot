@@ -555,6 +555,10 @@
     <button class="btn btn-primary btn-sm" onclick="showAddLink()">＋ 新增</button>
   </div>
 
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <button class="btn btn-blue btn-full" id="check-all-btn" onclick="checkAllLinks()">🔍 一鍵檢測全部連結</button>
+  </div>
+
   <div class="form-group">
     <input type="text" id="link-search" placeholder="搜尋產品名稱..." oninput="renderLinks()">
   </div>
@@ -997,22 +1001,74 @@ function deleteLink(name) {
   }
 }
 
-async function checkLink(name) {
-  showToast(`檢測中：${name}...`);
-  try {
-    const url = state.links[name]?.url || '';
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl, { method: 'HEAD', signal: AbortSignal.timeout(8000) });
-    state.links[name].valid = res.ok;
-    DB.set('shopeeLinks', state.links);
-    showToast(res.ok ? `✅ ${name} 連結有效` : `❌ ${name} 連結失效！`);
-    renderLinks();
-  } catch {
-    state.links[name].valid = false;
-    DB.set('shopeeLinks', state.links);
-    showToast(`❌ ${name} 無法連接`);
-    renderLinks();
+async function checkShopeeUrl(url) {
+  const proxies = [
+    `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(12000) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      const lower = text.toLowerCase();
+      // 失效連結通常導向首頁或 404
+      if (lower.includes('shopee') && text.length > 1000 &&
+          !lower.includes('page not found') && !lower.includes('404 not found')) {
+        try {
+          const json = JSON.parse(text);
+          if (json.status) return json.status.http_code < 400;
+        } catch {}
+        return true;
+      }
+      try {
+        const json = JSON.parse(text);
+        if (json.status && json.status.http_code) return json.status.http_code < 400;
+      } catch {}
+    } catch (e) { console.log(e); }
   }
+  return null; // 無法判斷
+}
+
+async function checkLink(name) {
+  showToast(`🔍 檢測中：${name}...`);
+  const url = state.links[name]?.url || '';
+  if (!url) return;
+  const result = await checkShopeeUrl(url);
+  if (result === true) {
+    state.links[name].valid = true;
+    showToast(`✅ ${name}：有效`);
+  } else if (result === false) {
+    state.links[name].valid = false;
+    showToast(`❌ ${name}：失效！`);
+  } else {
+    state.links[name].valid = null;
+    showToast(`⚠️ ${name}：無法自動判斷，已開啟確認`);
+    window.open(url, '_blank');
+  }
+  DB.set('shopeeLinks', state.links);
+  renderLinks();
+}
+
+async function checkAllLinks() {
+  const names = Object.keys(state.links);
+  if (!names.length) { showToast('還沒有連結！'); return; }
+  let ok = 0, fail = 0, unknown = 0;
+  for (let i = 0; i < names.length; i++) {
+    const name = names[i];
+    const url = state.links[name]?.url || '';
+    showToast(`🔍 ${i+1}/${names.length} 檢測：${name}`);
+    const result = await checkShopeeUrl(url);
+    if (result === true)       { state.links[name].valid = true;  ok++; }
+    else if (result === false) { state.links[name].valid = false; fail++; }
+    else                       { state.links[name].valid = null;  unknown++; }
+    DB.set('shopeeLinks', state.links);
+    renderLinks();
+    await new Promise(r => setTimeout(r, 600));
+  }
+  let msg = `檢測完成！有效 ${ok}`;
+  if (fail)    msg += `，失效 ${fail}`;
+  if (unknown) msg += `，無法判斷 ${unknown}（請手動開啟確認）`;
+  showToast(msg);
 }
 
 function updateLinkCheck() {} // placeholder
